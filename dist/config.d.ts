@@ -100,6 +100,8 @@ export interface HudConfig {
         customLine: string;
         customLinePosition: CustomLinePosition;
         timeFormat: TimeFormatMode;
+        showAdvisor: boolean;
+        advisorOverride: string;
         autoCompactWindow: number | null;
     };
     colors: HudColorOverrides;

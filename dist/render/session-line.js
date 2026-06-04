@@ -6,6 +6,7 @@ import { getAdaptiveBarWidth } from '../utils/terminal.js';
 import { renderCostEstimate } from './lines/cost.js';
 import { renderPromptCacheLine } from './lines/prompt-cache.js';
 import { renderSessionTimeLine } from './lines/session-time.js';
+import { renderAdvisorLine } from './lines/advisor.js';
 import { t } from '../i18n/index.js';
 import { formatResetTime } from './format-reset-time.js';
 const DEBUG = process.env.DEBUG?.includes('claude-hud') || process.env.DEBUG === '*';
@@ -260,6 +261,13 @@ export function renderSessionLine(ctx) {
         const total = st.inputTokens + st.outputTokens + st.cacheCreationTokens + st.cacheReadTokens;
         if (total > 0) {
             parts.push(label(`${t('format.tok')}: ${formatTokens(total)} (${t('format.in')}: ${formatTokens(st.inputTokens)}, ${t('format.out')}: ${formatTokens(st.outputTokens)})`, colors));
+        }
+    }
+    // Advisor model (when `/advisor` is configured for the session)
+    if (display?.showAdvisor) {
+        const advisorLine = renderAdvisorLine(ctx);
+        if (advisorLine) {
+            parts.push(advisorLine);
         }
     }
     if (display?.showDuration !== false && ctx.sessionDuration) {
