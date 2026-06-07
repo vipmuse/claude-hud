@@ -161,7 +161,7 @@ Chinese HUD labels are available as an explicit opt-in. English stays the defaul
 | `pathLevels` | 1-3 | 1 | Directory levels to show in project path |
 | `maxWidth` | number \| `null` | `null` | Optional fallback width used only when terminal width detection fails completely |
 | `forceMaxWidth` | boolean | false | Always use `maxWidth` when it is set, even if terminal width detection returns a smaller value |
-| `elementOrder` | string[] | `["project","context","usage","promptCache","memory","environment","tools","agents","todos","sessionTime"]` | Expanded-mode element order. Omit entries to hide them in expanded mode. Existing configs keep their explicit order until updated. |
+| `elementOrder` | string[] | `["project","addedDirs","context","usage","promptCache","memory","environment","tools","skills","mcp","agents","todos","sessionTime"]` | Expanded-mode element order. Omit entries to hide them in expanded mode. Existing configs keep their explicit order until updated. |
 | `display.mergeGroups` | string[][] | `[["context","usage"]]` | Expanded-mode groups that should share a line when adjacent. Set `[]` to disable merged lines. |
 | `gitStatus.enabled` | boolean | true | Show git branch in HUD |
 | `gitStatus.showDirty` | boolean | true | Show `*` for uncommitted changes |
@@ -193,6 +193,8 @@ Chinese HUD labels are available as an explicit opt-in. English stays the defaul
 | `display.externalUsageFreshnessMs` | number | `300000` | Maximum allowed age for the external usage snapshot before it is ignored |
 | `display.showTokenBreakdown` | boolean | true | Show token details at high context (85%+) |
 | `display.showTools` | boolean | false | Show tools activity line |
+| `display.showSkills` | boolean | false | Show active Skills detected from `Skill` tool invocations |
+| `display.showMcp` | boolean | false | Show active MCP servers detected from `mcp__server__tool` invocations |
 | `display.toolNameMaxLength` | number | `0` | Maximum displayed tool-name length. `0` keeps full names; MCP names may shorten to their final segment when truncating |
 | `display.toolsMaxVisible` | number | `4` | Maximum completed tools shown on the tools line. `0` means unlimited |
 | `display.showAgents` | boolean | false | Show agents activity line |
@@ -299,7 +301,7 @@ Example fallback snapshot:
   "language": "zh",
   "lineLayout": "expanded",
   "pathLevels": 2,
-  "elementOrder": ["project", "tools", "context", "usage", "memory", "environment", "agents", "todos", "sessionTime"],
+  "elementOrder": ["project", "tools", "skills", "mcp", "context", "usage", "memory", "environment", "agents", "todos", "sessionTime"],
   "gitStatus": {
     "enabled": true,
     "showDirty": true,
@@ -308,6 +310,8 @@ Example fallback snapshot:
   },
   "display": {
     "showTools": true,
+    "showSkills": true,
+    "showMcp": true,
     "showAgents": true,
     "showTodos": true,
     "showConfigCounts": true,
@@ -357,8 +361,8 @@ Example fallback snapshot:
 - Verify you're in a git repository
 - Check `gitStatus.enabled` is not `false` in config
 
-**Tool/agent/todo lines missing?**
-- These are hidden by default — enable with `showTools`, `showAgents`, `showTodos` in config
+**Tool/skill/MCP/agent/todo lines missing?**
+- These are hidden by default — enable with `showTools`, `showSkills`, `showMcp`, `showAgents`, `showTodos` in config
 - They also only appear when there's activity to show
 
 **HUD not appearing after setup?**

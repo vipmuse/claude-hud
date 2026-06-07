@@ -60,6 +60,8 @@ interface SerializedAgentEntry extends Omit<AgentEntry, 'startTime' | 'endTime'>
 
 interface SerializedTranscriptData {
   tools: SerializedToolEntry[];
+  skills: string[];
+  mcpServers: string[];
   agents: SerializedAgentEntry[];
   todos: TodoItem[];
   sessionStart?: string;
@@ -78,7 +80,8 @@ interface TranscriptCacheFile {
   data: SerializedTranscriptData;
 }
 
-const TRANSCRIPT_CACHE_VERSION = 7;
+const TRANSCRIPT_CACHE_VERSION = 8;
+const MCP_TOOL_NAME_PATTERN = /^mcp__(.+?)__(.+)$/;
 
 // Hard cap on the advisor model ID captured from the transcript. Real Claude
 // model IDs (e.g. "claude-haiku-4-5-20251001") fit comfortably under this; the
@@ -108,6 +111,28 @@ function normalizeSessionTokens(tokens: unknown): SessionTokenUsage | undefined 
     cacheCreationTokens: normalizeTokenCount(raw.cacheCreationTokens),
     cacheReadTokens: normalizeTokenCount(raw.cacheReadTokens),
   };
+}
+
+function normalizeNameList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string') {
+      continue;
+    }
+    const name = item.trim();
+    if (!name || seen.has(name)) {
+      continue;
+    }
+    seen.add(name);
+    names.push(name);
+  }
+
+  return names;
 }
 
 function getTranscriptCachePath(transcriptPath: string, homeDir: string): string {
@@ -145,6 +170,8 @@ function serializeTranscriptData(data: TranscriptData): SerializedTranscriptData
       startTime: tool.startTime.toISOString(),
       endTime: tool.endTime?.toISOString(),
     })),
+    skills: [...data.skills],
+    mcpServers: [...data.mcpServers],
     agents: data.agents.map((agent) => ({
       ...agent,
       startTime: agent.startTime.toISOString(),
@@ -168,6 +195,8 @@ function deserializeTranscriptData(data: SerializedTranscriptData): TranscriptDa
       startTime: new Date(tool.startTime),
       endTime: tool.endTime ? new Date(tool.endTime) : undefined,
     })),
+    skills: normalizeNameList(data.skills),
+    mcpServers: normalizeNameList(data.mcpServers),
     agents: data.agents.map((agent) => ({
       ...agent,
       startTime: new Date(agent.startTime),
@@ -227,6 +256,8 @@ function writeTranscriptCache(transcriptPath: string, state: TranscriptFileState
 export async function parseTranscript(transcriptPath: string): Promise<TranscriptData> {
   const result: TranscriptData = {
     tools: [],
+    skills: [],
+    mcpServers: [],
     agents: [],
     todos: [],
   };
@@ -251,6 +282,8 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
   }
 
   const toolMap = new Map<string, ToolEntry>();
+  const skillSet = new Set<string>();
+  const mcpServerSet = new Set<string>();
   const agentMap = new Map<string, AgentEntry>();
   let latestTodos: TodoItem[] = [];
   const taskIdToIndex = new Map<string, number>();
@@ -348,7 +381,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
             }
           }
         }
-        processEntry(entry, toolMap, agentMap, taskIdToIndex, latestTodos, result);
+        processEntry(entry, toolMap, skillSet, mcpServerSet, agentMap, taskIdToIndex, latestTodos, result);
       } catch {
         lastUsageKey = undefined;
         // Skip malformed lines
@@ -376,6 +409,8 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
     }
   }
   result.tools = Array.from(toolMap.values()).slice(-20);
+  result.skills = Array.from(skillSet.values());
+  result.mcpServers = Array.from(mcpServerSet.values());
   result.agents = Array.from(agentMap.values()).slice(-10);
   result.todos = latestTodos;
   result.sessionName = customTitle ?? latestSlug;
@@ -397,6 +432,8 @@ export function _setCreateReadStreamForTests(impl: typeof fs.createReadStream | 
 function processEntry(
   entry: TranscriptLine,
   toolMap: Map<string, ToolEntry>,
+  skillSet: Set<string>,
+  mcpServerSet: Set<string>,
   agentMap: Map<string, AgentEntry>,
   taskIdToIndex: Map<string, number>,
   latestTodos: TodoItem[],
@@ -418,6 +455,18 @@ function processEntry(
 
   for (const block of content) {
     if (block.type === 'tool_use' && block.id && block.name) {
+      const skillName = block.name === 'Skill'
+        ? normalizeSkillName(block.input?.skill)
+        : undefined;
+      if (skillName) {
+        skillSet.add(skillName);
+      }
+
+      const mcpServerName = extractMcpServerName(block.name);
+      if (mcpServerName) {
+        mcpServerSet.add(mcpServerName);
+      }
+
       const toolEntry: ToolEntry = {
         id: block.id,
         name: block.name,
@@ -541,14 +590,30 @@ function extractTarget(toolName: string, input?: Record<string, unknown>): strin
     case 'Grep':
       return input.pattern as string;
     case 'Skill':
-      return typeof input.skill === 'string' && input.skill.trim().length > 0
-        ? input.skill
-        : undefined;
+      return normalizeSkillName(input.skill);
     case 'Bash':
       const cmd = input.command as string;
       return cmd?.slice(0, 30) + (cmd?.length > 30 ? '...' : '');
   }
   return undefined;
+}
+
+function normalizeSkillName(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const skillName = value.trim();
+  return skillName.length > 0 ? skillName : undefined;
+}
+
+function extractMcpServerName(toolName: string): string | undefined {
+  const match = MCP_TOOL_NAME_PATTERN.exec(toolName);
+  if (!match) {
+    return undefined;
+  }
+
+  const serverName = match[1].trim();
+  return serverName.length > 0 ? serverName : undefined;
 }
 
 function resolveTaskIndex(

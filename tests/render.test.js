@@ -4,12 +4,15 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { render } from '../dist/render/index.js';
 import { mergeConfig } from '../dist/config.js';
+import { parseTranscript } from '../dist/transcript.js';
 import { renderSessionLine } from '../dist/render/session-line.js';
 import { renderProjectLine, renderGitFilesLine } from '../dist/render/lines/project.js';
 import { renderPromptCacheLine } from '../dist/render/lines/prompt-cache.js';
 import { renderToolsLine, shortenToolName } from '../dist/render/tools-line.js';
+import { renderSkillsLine, renderMcpLine } from '../dist/render/skills-mcp-line.js';
 import { renderAgentsLine } from '../dist/render/agents-line.js';
 import { renderTodosLine } from '../dist/render/todos-line.js';
 import { renderUsageLine } from '../dist/render/lines/usage.js';
@@ -42,7 +45,7 @@ function baseContext() {
         },
       },
     },
-    transcript: { tools: [], agents: [], todos: [], sessionTokens: undefined },
+    transcript: { tools: [], skills: [], mcpServers: [], agents: [], todos: [], sessionTokens: undefined },
     claudeMdCount: 0,
     rulesCount: 0,
     mcpCount: 0,
@@ -55,9 +58,9 @@ function baseContext() {
       lineLayout: 'compact',
       showSeparators: false,
       pathLevels: 1,
-      elementOrder: ['project', 'context', 'usage', 'promptCache', 'memory', 'environment', 'tools', 'agents', 'todos'],
+      elementOrder: ['project', 'context', 'usage', 'promptCache', 'memory', 'environment', 'tools', 'skills', 'mcp', 'agents', 'todos'],
       gitStatus: { enabled: true, showDirty: true, showAheadBehind: false, showFileStats: false, branchOverflow: 'truncate', pushWarningThreshold: 0, pushCriticalThreshold: 0 },
-      display: { showModel: true, showProject: true, showContextBar: true, contextValue: 'percent', showConfigCounts: true, showCost: false, showDuration: true, showSpeed: false, showTokenBreakdown: true, showUsage: true, usageValue: 'percent', usageBarEnabled: false, showResetLabel: true, showTools: true, showAgents: true, showTodos: true, showSessionTokens: false, showSessionName: false, showClaudeCodeVersion: false, showMemoryUsage: false, showPromptCache: false, promptCacheTtlSeconds: 300, showOutputStyle: false, mergeGroups: [['context', 'usage']], autocompactBuffer: 'enabled', usageThreshold: 0, sevenDayThreshold: 80, environmentThreshold: 0, customLine: '' },
+      display: { showModel: true, showProject: true, showContextBar: true, contextValue: 'percent', showConfigCounts: true, showCost: false, showDuration: true, showSpeed: false, showTokenBreakdown: true, showUsage: true, usageValue: 'percent', usageBarEnabled: false, showResetLabel: true, showTools: true, showSkills: false, showMcp: false, showAgents: true, showTodos: true, showSessionTokens: false, showSessionName: false, showClaudeCodeVersion: false, showMemoryUsage: false, showPromptCache: false, promptCacheTtlSeconds: 300, showOutputStyle: false, mergeGroups: [['context', 'usage']], autocompactBuffer: 'enabled', usageThreshold: 0, sevenDayThreshold: 80, environmentThreshold: 0, customLine: '' },
       colors: {
         context: 'green',
         usage: 'brightBlue',
@@ -714,6 +717,8 @@ test('label color overrides apply across shared secondary text surfaces', () => 
   ctx.transcript.tools = [
     { id: 'tool-1', name: 'Read', target: 'src/index.ts', status: 'running', startTime: new Date(0) },
   ];
+  ctx.transcript.skills = ['frontend-design'];
+  ctx.transcript.mcpServers = ['linear'];
   ctx.transcript.agents = [
     { id: 'agent-1', type: 'planner', model: 'haiku', description: 'Inspecting', status: 'running', startTime: new Date(0) },
   ];
@@ -721,6 +726,8 @@ test('label color overrides apply across shared secondary text surfaces', () => 
     { content: 'Ship it', status: 'in_progress' },
     { content: 'Done', status: 'completed' },
   ];
+  ctx.config.display.showSkills = true;
+  ctx.config.display.showMcp = true;
 
   const expected = '\x1b[38;2;171;205;239m';
   assert.ok(renderIdentityLine(ctx).includes(`${expected}Context\x1b[0m`));
@@ -729,6 +736,8 @@ test('label color overrides apply across shared secondary text surfaces', () => 
   assert.ok(renderEnvironmentLine(ctx)?.includes(`${expected}2 CLAUDE.md | 1 rules\x1b[0m`));
   assert.ok(renderMemoryLine({ ...ctx, config: { ...ctx.config, lineLayout: 'expanded', display: { ...ctx.config.display, showMemoryUsage: true } } })?.includes(`${expected}Approx RAM\x1b[0m`));
   assert.ok(renderToolsLine(ctx)?.includes(`${expected}: src/index.ts\x1b[0m`));
+  assert.ok(renderSkillsLine(ctx)?.includes(`${expected}(1)\x1b[0m`));
+  assert.ok(renderMcpLine(ctx)?.includes(`${expected}(1)\x1b[0m`));
   assert.ok(renderAgentsLine(ctx)?.includes(`${expected}[haiku]\x1b[0m`));
   assert.ok(renderTodosLine(ctx)?.includes(`${expected}(1/2)\x1b[0m`));
 });
@@ -1310,6 +1319,76 @@ test('renderTodosLine returns null when no todos exist', () => {
 test('renderToolsLine returns null when no tools exist', () => {
   const ctx = baseContext();
   assert.equal(renderToolsLine(ctx), null);
+});
+
+test('parseTranscript detects active skills and distinct MCP servers from tool_use blocks', async () => {
+  const fixturePath = fileURLToPath(new URL('./fixtures/transcript-render.jsonl', import.meta.url));
+
+  const result = await parseTranscript(fixturePath);
+
+  assert.deepEqual(result.skills, ['frontend-design']);
+  assert.deepEqual(result.mcpServers, ['linear', 'slack']);
+});
+
+test('renderSkillsLine and renderMcpLine show counts and names when enabled', () => {
+  const ctx = baseContext();
+  ctx.config.display.showSkills = true;
+  ctx.config.display.showMcp = true;
+  ctx.transcript.skills = ['frontend-design'];
+  ctx.transcript.mcpServers = ['linear', 'slack'];
+
+  const skillsLine = stripAnsi(renderSkillsLine(ctx) ?? '');
+  const mcpLine = stripAnsi(renderMcpLine(ctx) ?? '');
+
+  assert.equal(skillsLine, '✓ Skills (1): frontend-design');
+  assert.equal(mcpLine, '✓ MCPs (2): linear, slack');
+});
+
+test('renderSkillsLine and renderMcpLine return null with no data even when enabled', () => {
+  const ctx = baseContext();
+  ctx.config.display.showSkills = true;
+  ctx.config.display.showMcp = true;
+
+  assert.equal(renderSkillsLine(ctx), null);
+  assert.equal(renderMcpLine(ctx), null);
+});
+
+test('skills and MCP activity lines stay hidden by default', () => {
+  const ctx = baseContext();
+  ctx.config = mergeConfig({
+    lineLayout: 'expanded',
+    elementOrder: ['project', 'skills', 'mcp'],
+  });
+  ctx.transcript.skills = ['frontend-design'];
+  ctx.transcript.mcpServers = ['linear', 'slack'];
+
+  const output = captureRenderLines(ctx).join('\n');
+
+  assert.ok(!output.includes('Skills'), 'skills line should be default-off');
+  assert.ok(!output.includes('MCPs (2)'), 'MCP activity line should be default-off');
+});
+
+test('mergeConfig validates skill and MCP display options', () => {
+  const enabled = mergeConfig({
+    display: {
+      showSkills: true,
+      showMcp: true,
+    },
+  });
+  assert.equal(enabled.display.showSkills, true);
+  assert.equal(enabled.display.showMcp, true);
+
+  const sanitized = mergeConfig({
+    elementOrder: ['skills', 'unknown', 'mcp', 'project', 'skills'],
+    display: {
+      showSkills: 'yes',
+      showMcp: 1,
+    },
+  });
+
+  assert.deepEqual(sanitized.elementOrder, ['skills', 'mcp', 'project']);
+  assert.equal(sanitized.display.showSkills, false);
+  assert.equal(sanitized.display.showMcp, false);
 });
 
 // Usage display tests
@@ -2256,6 +2335,8 @@ test('render expanded layout honors custom elementOrder including activity place
   ctx.transcript.tools = [
     { id: 'tool-1', name: 'Read', status: 'completed', startTime: new Date(0), endTime: new Date(0), duration: 0 },
   ];
+  ctx.transcript.skills = ['frontend-design'];
+  ctx.transcript.mcpServers = ['linear'];
   ctx.transcript.agents = [
     { id: 'agent-1', type: 'planner', status: 'running', startTime: new Date(0) },
   ];
@@ -2263,10 +2344,14 @@ test('render expanded layout honors custom elementOrder including activity place
     { content: 'todo-marker', status: 'in_progress' },
   ];
   ctx.config.display.showMemoryUsage = true;
-  ctx.config.elementOrder = ['tools', 'project', 'usage', 'context', 'memory', 'environment', 'agents', 'todos'];
+  ctx.config.display.showSkills = true;
+  ctx.config.display.showMcp = true;
+  ctx.config.elementOrder = ['tools', 'skills', 'mcp', 'project', 'usage', 'context', 'memory', 'environment', 'agents', 'todos'];
 
   const lines = withTerminal(120, () => captureRenderLines(ctx));
   const toolIndex = lines.findIndex(line => line.includes('Read'));
+  const skillsIndex = lines.findIndex(line => line.includes('Skills'));
+  const mcpIndex = lines.findIndex(line => line.includes('MCPs'));
   const projectIndex = lines.findIndex(line => line.includes('my-project'));
   const combinedIndex = lines.findIndex(line => line.includes('Usage') && line.includes('Context'));
   const memoryIndex = lines.findIndex(line => line.includes('Approx RAM'));
@@ -2275,11 +2360,14 @@ test('render expanded layout honors custom elementOrder including activity place
   const todoIndex = lines.findIndex(line => line.includes('todo-marker'));
 
   assert.deepEqual(
-    [toolIndex, projectIndex, combinedIndex, memoryIndex, environmentIndex, agentIndex, todoIndex].every(index => index >= 0),
+    [toolIndex, skillsIndex, mcpIndex, projectIndex, combinedIndex, memoryIndex, environmentIndex, agentIndex, todoIndex].every(index => index >= 0),
     true,
     'expected all configured elements to render'
   );
   assert.ok(toolIndex < projectIndex, 'tool line should move ahead of project');
+  assert.ok(toolIndex < skillsIndex, 'skills line should follow tools line');
+  assert.ok(skillsIndex < mcpIndex, 'MCP line should follow skills line');
+  assert.ok(mcpIndex < projectIndex, 'project line should follow MCP line');
   assert.ok(projectIndex < combinedIndex, 'combined usage/context line should follow project');
   assert.ok(combinedIndex < memoryIndex, 'memory line should follow combined usage/context');
   assert.ok(memoryIndex < environmentIndex, 'environment line should follow memory');
@@ -2462,14 +2550,20 @@ test('render compact layout keeps activity lines even when elementOrder omits th
   ctx.transcript.tools = [
     { id: 'tool-1', name: 'Read', status: 'completed', startTime: new Date(0), endTime: new Date(0), duration: 0 },
   ];
+  ctx.transcript.skills = ['frontend-design'];
+  ctx.transcript.mcpServers = ['linear'];
   ctx.transcript.todos = [
     { content: 'todo-marker', status: 'in_progress' },
   ];
   ctx.config.elementOrder = ['project'];
+  ctx.config.display.showSkills = true;
+  ctx.config.display.showMcp = true;
 
   const output = captureRenderLines(ctx).join('\n');
 
   assert.ok(output.includes('Read'), 'compact mode should keep tools visible');
+  assert.ok(output.includes('Skills'), 'compact mode should keep skills visible');
+  assert.ok(output.includes('MCPs'), 'compact mode should keep MCPs visible');
   assert.ok(output.includes('todo-marker'), 'compact mode should keep todos visible');
 });
 
