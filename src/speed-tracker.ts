@@ -4,6 +4,9 @@ import * as os from 'node:os';
 import { createHash } from 'node:crypto';
 import type { StdinData } from './types.js';
 import { getHudPluginDir } from './claude-config-dir.js';
+import { createDebug } from './debug.js';
+
+const debug = createDebug('speed-tracker');
 
 const SPEED_WINDOW_MS = 2000;
 // Status lines can re-render many times per second while tokens stream.
@@ -59,7 +62,8 @@ function readCache(homeDir: string, transcriptPath: string): SpeedCache | null {
       return null;
     }
     return parsed;
-  } catch {
+  } catch (err) {
+    debug('Failed to read speed cache:', err instanceof Error ? err.message : err);
     return null;
   }
 }
@@ -84,8 +88,8 @@ function writeCache(homeDir: string, transcriptPath: string, cache: SpeedCache):
     } catch {
       // Best-effort: cache permissions should not break speed tracking.
     }
-  } catch {
-    // Ignore cache write failures
+  } catch (err) {
+    debug('Failed to write speed cache:', err instanceof Error ? err.message : err);
   }
 }
 
@@ -102,7 +106,8 @@ function readFileSizeCache(cachePath: string): FileSizeCache | null {
       return null;
     }
     return parsed;
-  } catch {
+  } catch (err) {
+    debug('Failed to read file size cache:', err instanceof Error ? err.message : err);
     return null;
   }
 }
@@ -117,8 +122,8 @@ function writeFileSizeCache(cachePath: string, cache: FileSizeCache): void {
     } catch {
       // Best-effort: cache permissions should not break speed tracking.
     }
-  } catch {
-    // Ignore cache write failures
+  } catch (err) {
+    debug('Failed to write file size cache:', err instanceof Error ? err.message : err);
   }
 }
 
@@ -130,8 +135,8 @@ function removeLegacyCache(homeDir: string): void {
     if (fs.existsSync(legacyPath)) {
       fs.unlinkSync(legacyPath);
     }
-  } catch {
-    // Ignore cleanup failures
+  } catch (err) {
+    debug('Failed to remove legacy cache:', err instanceof Error ? err.message : err);
   }
 }
 
@@ -176,7 +181,8 @@ function getTranscriptSpeed(
     const estimatedTokens = deltaBytes / BYTES_PER_TOKEN;
     writeFileSizeCache(cachePath, { fileSize, timestamp: now });
     return estimatedTokens / (deltaMs / 1000);
-  } catch {
+  } catch (err) {
+    debug('Failed to compute transcript speed:', err instanceof Error ? err.message : err);
     return null;
   }
 }

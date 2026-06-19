@@ -2,7 +2,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { getHudPluginDir } from './claude-config-dir.js';
+import { createDebug } from './debug.js';
 import type { Language } from './i18n/types.js';
+
+const debug = createDebug('config');
 
 export type LineLayoutType = 'compact' | 'expanded';
 
@@ -746,7 +749,8 @@ export async function loadConfig(): Promise<HudConfig> {
     const content = fs.readFileSync(configPath, 'utf-8');
     const userConfig = JSON.parse(content) as Partial<HudConfig>;
     return mergeConfig(userConfig);
-  } catch {
+  } catch (err) {
+    debug('Failed to load config from %s, using defaults:', configPath, err instanceof Error ? err.message : err);
     return mergeConfig({});
   }
 }
