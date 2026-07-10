@@ -156,8 +156,8 @@ Claude Code → stdin JSON → claude-hud → stdout → 在终端中显示
 | `pathLevels` | 1-3 | 1 | 项目路径显示的目录层级数 |
 | `maxWidth` | number \| `null` | `null` | 可选的回退宽度，仅在终端宽度检测完全失败时使用 |
 | `forceMaxWidth` | boolean | false | 当设置了 `maxWidth` 时始终使用它，即使终端宽度检测返回更小的值 |
-| `elementOrder` | string[] | `["project","context","usage","promptCache","memory","environment","tools","agents","todos","sessionTime"]` | 展开模式下元素的顺序。省略的条目在展开模式下隐藏。现有配置会保留其显式顺序直到更新 |
-| `display.mergeGroups` | string[][] | `[["context","usage"]]` | 展开模式下相邻时应共享一行的元素分组。设为 `[]` 可禁用合并行 |
+| `elementOrder` | string[] | `["project","context","usage","promptCache","memory","gpu","environment","tools","agents","todos","sessionTime"]` | 展开模式下元素的顺序。省略的条目在展开模式下隐藏。现有配置会保留其显式顺序直到更新 |
+| `display.mergeGroups` | string[][] | `[["context","usage"],["memory","gpu"]]` | 展开模式下相邻时应共享一行的元素分组。设为 `[]` 可禁用合并行 |
 | `gitStatus.enabled` | boolean | true | 在 HUD 中显示 git 分支 |
 | `gitStatus.showDirty` | boolean | true | 显示 `*` 表示未提交的更改 |
 | `gitStatus.showAheadBehind` | boolean | false | 显示 `↑N ↓N` 表示领先/落后远程的提交数 |
@@ -199,6 +199,7 @@ Claude Code → stdin JSON → claude-hud → stdout → 在终端中显示
 | `display.showCompactions` | boolean | false | 显示本会话已发生的上下文压缩次数（手动 `/compact` 或自动压缩），从 transcript 的 `compact_boundary` 记录计数，例如 `压缩次数: 2`。第一次压缩前不显示 |
 | `display.showClaudeCodeVersion` | boolean | false | 显示已安装的 Claude Code 版本，如 `CC v2.1.81` |
 | `display.showMemoryUsage` | boolean | false | 在展开布局中显示近似系统 RAM 使用行 |
+| `display.showGpu` | boolean | false | 在展开布局中显示 GPU 利用率、显存用量和温度（需要 `nvidia-smi`） |
 | `display.showPromptCache` | boolean | false | 根据 transcript 中最后一次 assistant 响应时间显示 prompt cache 倒计时 |
 | `display.promptCacheTtlSeconds` | number | `300` | Prompt cache TTL 秒数。Pro 保持默认值，Max 可设为 `3600` |
 | `colors.context` | 颜色值 | `green` | 上下文进度条和百分比的基础颜色 |
@@ -220,6 +221,8 @@ Claude Code → stdin JSON → claude-hud → stdout → 在终端中显示
 支持的颜色名称：`dim`、`red`、`green`、`yellow`、`magenta`、`cyan`、`brightBlue`、`brightMagenta`。你也可以使用 256 色数字（`0-255`）或十六进制（`#rrggbb`）。
 
 `display.showMemoryUsage` 为完全 opt-in 选项，仅在 `expanded` 布局下渲染。它报告本地机器的近似系统 RAM 使用情况，而非 Claude Code 或特定进程内的精确内存压力。由于可回收的 OS 缓存缓冲区仍可能被计入已用内存，该数字可能高估实际压力。
+
+`display.showGpu` 为完全 opt-in 选项，仅在 `expanded` 布局下渲染。它通过 `nvidia-smi` 读取第一块 GPU 的核心利用率、显存用量和核心温度（仅支持 NVIDIA GPU）。读数会缓存几秒钟，以免约 300ms 一次的状态栏轮询每次都启动 `nvidia-smi`。在没有可用 `nvidia-smi` 的机器上该行保持隐藏。
 
 `display.showCost` 为完全 opt-in 选项。ClaudeHUD 优先使用 Claude Code 在 stdin 上提供的原生 `cost.total_cost_usd` 字段（可用时）。如果该字段缺失或对直连 Anthropic 会话无效，ClaudeHUD 会回退到现有的基于本地转录文件的估算方案，确保费用行在旧负载下仍能工作。原生字段在会话中首个 API 响应之前为空，因此费用显示可能在响应到达前保持隐藏。对于已知的路由提供商（如 Bedrock、Vertex AI），ClaudeHUD 也会隐藏费用显示，因为云提供商计费会话可能报告 `$0.00` 或省略该字段，即使会话并非真正免费。
 

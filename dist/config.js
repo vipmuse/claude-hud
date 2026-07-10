@@ -11,6 +11,7 @@ export const DEFAULT_ELEMENT_ORDER = [
     'usage',
     'promptCache',
     'memory',
+    'gpu',
     'environment',
     'tools',
     'skills',
@@ -21,6 +22,7 @@ export const DEFAULT_ELEMENT_ORDER = [
 ];
 export const DEFAULT_MERGE_GROUPS = [
     ['context', 'usage'],
+    ['memory', 'gpu'],
 ];
 const KNOWN_ELEMENTS = new Set(DEFAULT_ELEMENT_ORDER);
 export const DEFAULT_CONFIG = {
@@ -68,6 +70,7 @@ export const DEFAULT_CONFIG = {
         showClaudeCodeVersion: false,
         showEffortLevel: false,
         showMemoryUsage: false,
+        showGpu: false,
         showPromptCache: false,
         promptCacheTtlSeconds: 300,
         showSessionTokens: false,
@@ -431,6 +434,9 @@ export function mergeConfig(userConfig) {
         showMemoryUsage: typeof migrated.display?.showMemoryUsage === 'boolean'
             ? migrated.display.showMemoryUsage
             : DEFAULT_CONFIG.display.showMemoryUsage,
+        showGpu: typeof migrated.display?.showGpu === 'boolean'
+            ? migrated.display.showGpu
+            : DEFAULT_CONFIG.display.showGpu,
         showPromptCache: typeof migrated.display?.showPromptCache === 'boolean'
             ? migrated.display.showPromptCache
             : DEFAULT_CONFIG.display.showPromptCache,

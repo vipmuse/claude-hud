@@ -105,6 +105,16 @@ export interface MemoryInfo {
   usedPercent: number;
 }
 
+export interface GpuInfo {
+  // GPU core utilization 0-100, null when the driver reports N/A.
+  utilizationPercent: number | null;
+  memoryUsedBytes: number | null;
+  memoryTotalBytes: number | null;
+  memoryUsedPercent: number | null;
+  // Core temperature in °C, null when the sensor is unavailable.
+  temperatureC: number | null;
+}
+
 /** Check if usage limit is reached (either window at 100%) */
 export function isLimitReached(data: UsageData): boolean {
   return data.fiveHour === 100 || data.sevenDay === 100;
@@ -150,6 +160,7 @@ export interface RenderContext {
   gitStatus: GitStatus | null;
   usageData: UsageData | null;
   memoryUsage: MemoryInfo | null;
+  gpuUsage: GpuInfo | null;
   config: HudConfig;
   extraLabel: string | null;
   outputStyle?: string;

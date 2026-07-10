@@ -161,8 +161,8 @@ Chinese HUD labels are available as an explicit opt-in. English stays the defaul
 | `pathLevels` | 1-3 | 1 | Directory levels to show in project path |
 | `maxWidth` | number \| `null` | `null` | Optional fallback width used only when terminal width detection fails completely |
 | `forceMaxWidth` | boolean | false | Always use `maxWidth` when it is set, even if terminal width detection returns a smaller value |
-| `elementOrder` | string[] | `["project","addedDirs","context","usage","promptCache","memory","environment","tools","skills","mcp","agents","todos","sessionTime"]` | Expanded-mode element order. Omit entries to hide them in expanded mode. Existing configs keep their explicit order until updated. |
-| `display.mergeGroups` | string[][] | `[["context","usage"]]` | Expanded-mode groups that should share a line when adjacent. Set `[]` to disable merged lines. |
+| `elementOrder` | string[] | `["project","addedDirs","context","usage","promptCache","memory","gpu","environment","tools","skills","mcp","agents","todos","sessionTime"]` | Expanded-mode element order. Omit entries to hide them in expanded mode. Existing configs keep their explicit order until updated. |
+| `display.mergeGroups` | string[][] | `[["context","usage"],["memory","gpu"]]` | Expanded-mode groups that should share a line when adjacent. Set `[]` to disable merged lines. |
 | `gitStatus.enabled` | boolean | true | Show git branch in HUD |
 | `gitStatus.showDirty` | boolean | true | Show `*` for uncommitted changes |
 | `gitStatus.showAheadBehind` | boolean | false | Show `↑N ↓N` for ahead/behind remote |
@@ -209,6 +209,7 @@ Chinese HUD labels are available as an explicit opt-in. English stays the defaul
 | `display.showCompactions` | boolean | false | Show how many context compactions (manual `/compact` or auto) have occurred this session, counted from transcript `compact_boundary` entries, e.g. `Compactions: 2`. Hidden until the first compaction |
 | `display.showClaudeCodeVersion` | boolean | false | Show the installed Claude Code version, e.g. `CC v2.1.81` |
 | `display.showMemoryUsage` | boolean | false | Show an approximate system RAM usage line in expanded layout |
+| `display.showGpu` | boolean | false | Show GPU utilization, VRAM usage, and temperature in expanded layout (requires `nvidia-smi`) |
 | `display.showPromptCache` | boolean | false | Show a prompt cache countdown based on the last assistant response timestamp in the transcript |
 | `display.promptCacheTtlSeconds` | number | `300` | Prompt cache TTL in seconds. Keep the default for Pro, set `3600` for Max |
 | `colors.context` | color value | `green` | Base color for the context bar and context percentage |
@@ -230,6 +231,8 @@ Chinese HUD labels are available as an explicit opt-in. English stays the defaul
 Supported color names: `dim`, `red`, `green`, `yellow`, `magenta`, `cyan`, `brightBlue`, `brightMagenta`. You can also use a 256-color number (`0-255`) or hex (`#rrggbb`).
 
 `display.showMemoryUsage` is fully opt-in and only renders in `expanded` layout. It reports approximate system RAM usage from the local machine, not precise memory pressure inside Claude Code or a specific process. The number may overstate actual pressure because reclaimable OS cache and buffers can still be counted as used memory.
+
+`display.showGpu` is fully opt-in and only renders in `expanded` layout. It shows GPU core utilization, VRAM usage, and core temperature for the first GPU, read via `nvidia-smi` (NVIDIA GPUs only). Readings are cached for a few seconds so the ~300ms statusline polling does not spawn `nvidia-smi` on every tick. The line stays hidden on machines without a working `nvidia-smi`.
 
 `display.showCost` is fully opt-in. ClaudeHUD prefers the native `cost.total_cost_usd` field that Claude Code provides on stdin when it is available. If that field is absent or invalid for a direct Anthropic session, ClaudeHUD falls back to the existing local transcript-based estimate so the cost line still works on older payloads. The native field is absent before the first API response in a session, so the cost display may stay hidden until then. ClaudeHUD also keeps the cost hidden for known routed providers such as Bedrock and Vertex AI, because cloud-provider billed sessions may report `$0.00` or omit the field even though the session was not literally free.
 

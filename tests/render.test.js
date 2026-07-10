@@ -17,6 +17,7 @@ import { renderAgentsLine } from '../dist/render/agents-line.js';
 import { renderTodosLine } from '../dist/render/todos-line.js';
 import { renderUsageLine } from '../dist/render/lines/usage.js';
 import { renderMemoryLine } from '../dist/render/lines/memory.js';
+import { renderGpuLine } from '../dist/render/lines/gpu.js';
 import { renderIdentityLine } from '../dist/render/lines/identity.js';
 import { renderEnvironmentLine } from '../dist/render/lines/environment.js';
 import { renderSessionTokensLine } from '../dist/render/lines/session-tokens.js';
@@ -581,6 +582,92 @@ test('renderMemoryLine stays hidden in compact layout even when enabled', () => 
   };
 
   assert.equal(renderMemoryLine(ctx), null);
+});
+
+test('renderGpuLine shows utilization, VRAM, and temperature in expanded layout when enabled', () => {
+  const ctx = baseContext();
+  ctx.config.lineLayout = 'expanded';
+  ctx.config.display.showGpu = true;
+  ctx.gpuUsage = {
+    utilizationPercent: 45,
+    memoryUsedBytes: 8 * 1024 ** 3,
+    memoryTotalBytes: 24 * 1024 ** 3,
+    memoryUsedPercent: 33,
+    temperatureC: 62,
+  };
+
+  const line = stripAnsi(renderGpuLine(ctx));
+
+  assert.ok(line.includes('GPU'));
+  assert.ok(line.includes('45%'));
+  assert.ok(line.includes('VRAM 8.0 GB / 24 GB'));
+  assert.ok(line.includes('(33%)'));
+  assert.ok(line.includes('62°C'));
+});
+
+test('renderGpuLine skips sensor fields the driver does not report', () => {
+  const ctx = baseContext();
+  ctx.config.lineLayout = 'expanded';
+  ctx.config.display.showGpu = true;
+  ctx.gpuUsage = {
+    utilizationPercent: null,
+    memoryUsedBytes: 2 * 1024 ** 3,
+    memoryTotalBytes: 8 * 1024 ** 3,
+    memoryUsedPercent: 25,
+    temperatureC: null,
+  };
+
+  const line = stripAnsi(renderGpuLine(ctx));
+
+  assert.ok(!line.includes('°C'));
+  assert.ok(line.includes('VRAM 2.0 GB / 8.0 GB'));
+});
+
+test('render expanded layout merges memory and gpu onto one line by default', () => {
+  const ctx = baseContext();
+  ctx.config.lineLayout = 'expanded';
+  ctx.config.display.showMemoryUsage = true;
+  ctx.config.display.showGpu = true;
+  ctx.config.display.mergeGroups = [['context', 'usage'], ['memory', 'gpu']];
+  ctx.config.elementOrder = ['project', 'context', 'usage', 'memory', 'gpu'];
+  ctx.memoryUsage = {
+    totalBytes: 16 * 1024 ** 3,
+    usedBytes: 10 * 1024 ** 3,
+    freeBytes: 6 * 1024 ** 3,
+    usedPercent: 63,
+  };
+  ctx.gpuUsage = {
+    utilizationPercent: 45,
+    memoryUsedBytes: 8 * 1024 ** 3,
+    memoryTotalBytes: 24 * 1024 ** 3,
+    memoryUsedPercent: 33,
+    temperatureC: 62,
+  };
+
+  const lines = withTerminal(200, () => captureRenderLines(ctx));
+
+  const merged = lines.find(line => line.includes('Approx RAM') && line.includes('GPU'));
+  assert.ok(merged, `expected one line with both RAM and GPU, got: ${JSON.stringify(lines)}`);
+  assert.ok(merged.includes('62°C'));
+});
+
+test('renderGpuLine stays hidden without GPU data or in compact layout', () => {
+  const enabledButNoData = baseContext();
+  enabledButNoData.config.lineLayout = 'expanded';
+  enabledButNoData.config.display.showGpu = true;
+  enabledButNoData.gpuUsage = null;
+  assert.equal(renderGpuLine(enabledButNoData), null);
+
+  const compact = baseContext();
+  compact.config.display.showGpu = true;
+  compact.gpuUsage = {
+    utilizationPercent: 45,
+    memoryUsedBytes: 8 * 1024 ** 3,
+    memoryTotalBytes: 24 * 1024 ** 3,
+    memoryUsedPercent: 33,
+    temperatureC: 62,
+  };
+  assert.equal(renderGpuLine(compact), null);
 });
 
 test('renderProjectLine includes extraLabel when present', () => {

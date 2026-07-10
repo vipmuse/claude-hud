@@ -155,6 +155,17 @@ test('mergeConfig preserves explicit showMemoryUsage=true', () => {
   assert.equal(config.display.showMemoryUsage, true);
 });
 
+test('mergeConfig defaults showGpu to false', () => {
+  const config = mergeConfig({});
+  assert.equal(config.display.showGpu, false);
+  assert.equal(DEFAULT_CONFIG.display.showGpu, false);
+});
+
+test('mergeConfig preserves explicit showGpu=true and rejects non-boolean values', () => {
+  assert.equal(mergeConfig({ display: { showGpu: true } }).display.showGpu, true);
+  assert.equal(mergeConfig({ display: { showGpu: 'yes' } }).display.showGpu, false);
+});
+
 test('mergeConfig defaults showPromptCache to false', () => {
   const config = mergeConfig({});
   assert.equal(config.display.showPromptCache, false);
@@ -501,10 +512,11 @@ test('mergeConfig defaults elementOrder to the full expanded layout', () => {
   assert.deepEqual(config.elementOrder, DEFAULT_ELEMENT_ORDER);
 });
 
-test('mergeConfig defaults mergeGroups to context and usage', () => {
+test('mergeConfig defaults mergeGroups to context+usage and memory+gpu', () => {
   const config = mergeConfig({});
   assert.deepEqual(config.display.mergeGroups, DEFAULT_MERGE_GROUPS);
   assert.deepEqual(DEFAULT_CONFIG.display.mergeGroups, DEFAULT_MERGE_GROUPS);
+  assert.deepEqual(DEFAULT_MERGE_GROUPS, [['context', 'usage'], ['memory', 'gpu']]);
 });
 
 test('mergeConfig preserves explicit empty mergeGroups to disable merged lines', () => {

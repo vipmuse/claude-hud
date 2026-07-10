@@ -96,6 +96,7 @@ Save as `language: "en"` or `language: "zh-Hans"`.
   - "Skills activity" - active skills count
   - "MCP status" - MCP server status
   - "Memory usage" - process memory footprint
+  - "GPU usage" - GPU load, VRAM, and temperature (needs nvidia-smi)
   - "Prompt cache" - cache TTL countdown
   - "Claude Code version" - the running CC version
   - "Compaction count" - Compactions: 2 after /compact or auto-compaction
@@ -144,6 +145,7 @@ If user chooses "Enter custom text", use AskUserQuestion to get their text. Save
   - "Skills activity" - active skills count
   - "MCP status" - MCP server status
   - "Memory usage" - process memory footprint
+  - "GPU usage" - GPU load, VRAM, and temperature (needs nvidia-smi)
   - "Prompt cache" - cache TTL countdown
   - "Claude Code version" - the running CC version
   - "Compaction count" - Compactions: 2 after /compact or auto-compaction
@@ -177,6 +179,7 @@ Info items (Counts, Tokens, Usage, Speed, Duration) can be turned off via "Reset
   - "Skills activity" - active skills count
   - "MCP status" - MCP server status
   - "Memory usage" - process memory footprint
+  - "GPU usage" - GPU load, VRAM, and temperature (needs nvidia-smi)
   - "Prompt cache" - cache TTL countdown
   - "Claude Code version" - the running CC version
   - "Compaction count" - Compactions: 2 after /compact or auto-compaction
@@ -313,6 +316,7 @@ If user chooses "Remove", set `display.customLine` to `""` in config.
 | Reasoning level | `display.showEffortLevel` |
 | Output style | `display.showOutputStyle` |
 | Memory usage | `display.showMemoryUsage` |
+| GPU usage | `display.showGpu` |
 | Prompt cache | `display.showPromptCache` (TTL via `display.promptCacheTtlSeconds`) |
 | Claude Code version | `display.showClaudeCodeVersion` |
 | Advisor model | `display.showAdvisor` (override via `display.advisorOverride`) |

@@ -73,6 +73,7 @@ src/
 ├── speed-tracker.ts     # Output speed tracking
 ├── context-cache.ts     # Context/usage caching across invocations
 ├── memory.ts            # System memory stats
+├── gpu.ts               # GPU stats via nvidia-smi (util/VRAM/temp)
 ├── claude-config-dir.ts # Resolve the Claude config directory
 ├── constants.ts         # Shared constants
 ├── debug.ts             # Debug logging
@@ -101,6 +102,7 @@ src/
         ├── cost.ts          # Session cost display
         ├── prompt-cache.ts  # Prompt cache countdown
         ├── memory.ts        # Memory usage display
+        ├── gpu.ts           # GPU usage / VRAM / temperature (opt-in)
         ├── session-time.ts  # Session duration / timestamps
         ├── session-tokens.ts # Session token totals
         ├── added-dirs.ts    # /add-dir workspace directories

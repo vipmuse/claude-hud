@@ -4,6 +4,8 @@ export const en = {
     "label.usage": "Usage",
     "label.weekly": "Weekly",
     "label.approxRam": "Approx RAM",
+    "label.gpu": "GPU",
+    "label.vram": "VRAM",
     "label.promptCache": "Cache",
     "label.rules": "rules",
     "label.hooks": "hooks",

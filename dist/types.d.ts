@@ -95,6 +95,13 @@ export interface MemoryInfo {
     freeBytes: number;
     usedPercent: number;
 }
+export interface GpuInfo {
+    utilizationPercent: number | null;
+    memoryUsedBytes: number | null;
+    memoryTotalBytes: number | null;
+    memoryUsedPercent: number | null;
+    temperatureC: number | null;
+}
 /** Check if usage limit is reached (either window at 100%) */
 export declare function isLimitReached(data: UsageData): boolean;
 export interface SessionTokenUsage {
@@ -129,6 +136,7 @@ export interface RenderContext {
     gitStatus: GitStatus | null;
     usageData: UsageData | null;
     memoryUsage: MemoryInfo | null;
+    gpuUsage: GpuInfo | null;
     config: HudConfig;
     extraLabel: string | null;
     outputStyle?: string;

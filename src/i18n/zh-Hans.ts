@@ -6,6 +6,8 @@ export const zhHans: Messages = {
   "label.usage": "用量",
   "label.weekly": "本周",
   "label.approxRam": "内存",
+  "label.gpu": "GPU",
+  "label.vram": "显存",
   "label.promptCache": "缓存",
   "label.rules": "规则",
   "label.hooks": "钩子",

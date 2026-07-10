@@ -31,6 +31,7 @@ export type HudElement =
   | 'usage'
   | 'promptCache'
   | 'memory'
+  | 'gpu'
   | 'environment'
   | 'tools'
   | 'skills'
@@ -76,6 +77,7 @@ export const DEFAULT_ELEMENT_ORDER: HudElement[] = [
   'usage',
   'promptCache',
   'memory',
+  'gpu',
   'environment',
   'tools',
   'skills',
@@ -87,6 +89,7 @@ export const DEFAULT_ELEMENT_ORDER: HudElement[] = [
 
 export const DEFAULT_MERGE_GROUPS: HudElement[][] = [
   ['context', 'usage'],
+  ['memory', 'gpu'],
 ];
 
 const KNOWN_ELEMENTS = new Set<HudElement>(DEFAULT_ELEMENT_ORDER);
@@ -136,6 +139,8 @@ export interface HudConfig {
     showClaudeCodeVersion: boolean;
     showEffortLevel: boolean;
     showMemoryUsage: boolean;
+    // Show GPU utilization / VRAM / temperature (requires nvidia-smi).
+    showGpu: boolean;
     showPromptCache: boolean;
     promptCacheTtlSeconds: number;
     showSessionTokens: boolean;
@@ -224,6 +229,7 @@ export const DEFAULT_CONFIG: HudConfig = {
     showClaudeCodeVersion: false,
     showEffortLevel: false,
     showMemoryUsage: false,
+    showGpu: false,
     showPromptCache: false,
     promptCacheTtlSeconds: 300,
     showSessionTokens: false,
@@ -637,6 +643,9 @@ export function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
     showMemoryUsage: typeof migrated.display?.showMemoryUsage === 'boolean'
       ? migrated.display.showMemoryUsage
       : DEFAULT_CONFIG.display.showMemoryUsage,
+    showGpu: typeof migrated.display?.showGpu === 'boolean'
+      ? migrated.display.showGpu
+      : DEFAULT_CONFIG.display.showGpu,
     showPromptCache: typeof migrated.display?.showPromptCache === 'boolean'
       ? migrated.display.showPromptCache
       : DEFAULT_CONFIG.display.showPromptCache,

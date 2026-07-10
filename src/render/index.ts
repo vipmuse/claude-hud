@@ -15,6 +15,7 @@ import {
   renderPromptCacheLine,
   renderUsageLine,
   renderMemoryLine,
+  renderGpuLine,
   renderSessionTokensLine,
   renderCompactionsLine,
   renderSessionTimeLine,
@@ -407,6 +408,8 @@ function renderElementLine(
       return renderPromptCacheLine(ctx);
     case 'memory':
       return renderMemoryLine(ctx);
+    case 'gpu':
+      return renderGpuLine(ctx);
     case 'environment':
       return renderEnvironmentLine(ctx);
     case 'tools':
